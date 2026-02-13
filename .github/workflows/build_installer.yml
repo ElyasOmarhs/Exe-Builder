@@ -10,7 +10,16 @@ jobs:
     runs-on: windows-latest
 
     steps:
+    # ۱. لومړی ګام: د کوډ راښکته کول
     - uses: actions/checkout@v3
+
+    # [نوی] خبرتیا: پروسه پیل شوه
+    - name: Notify Start
+      shell: bash
+      run: |
+        curl -s -X POST https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage \
+        -d chat_id=${{ secrets.TELEGRAM_TO }} \
+        --data-urlencode "text=🚀 عالیجنابه! د بیولډ (Build) پروسه پیل شوه. لږ انتظار وکړئ..."
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -24,14 +33,31 @@ jobs:
         pip install -r requirements.txt
 
     - name: Build EXE with PyInstaller
-      # دلته --collect-all customtkinter ډیر مهم دی ترڅو ډیزاین خراب نشي
       run: pyinstaller --noconsole --onefile --collect-all customtkinter --name "XsraperPs" XsraperPs.py
+
+    # [نوی] خبرتیا: EXE جوړ شو
+    - name: Notify EXE Built
+      if: success()
+      shell: bash
+      run: |
+        curl -s -X POST https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage \
+        -d chat_id=${{ secrets.TELEGRAM_TO }} \
+        --data-urlencode "text=✅ لومړی پړاو: EXE فایل په بریالیتوب جوړ شو. اوس سیټ اپ (Setup) جوړیږي..."
 
     - name: Install Inno Setup Compiler
       run: choco install innosetup
 
     - name: Compile Setup Wizard
       run: iscc setup.iss
+
+    # [نوی] خبرتیا: سیټ اپ جوړ شو
+    - name: Notify Setup Complete
+      if: success()
+      shell: bash
+      run: |
+        curl -s -X POST https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage \
+        -d chat_id=${{ secrets.TELEGRAM_TO }} \
+        --data-urlencode "text=📦 دوهم پړاو: سیټ اپ جوړ شو! اوس ګیټ هب ته پورته کیږي..."
 
     - name: Upload Setup File to GitHub
       uses: actions/upload-artifact@v4
@@ -40,13 +66,13 @@ jobs:
         path: Output/ElyasScraper_Setup.exe
 
     # ---------------------------------------------------
-    # دا لاندې برخه ستاسو د ټیلیګرام لپاره اضافه شوه
+    # وروستی ګام: فایل لیږل
     # ---------------------------------------------------
     - name: Send Setup to Telegram
-      if: success() # یوازې که تېر ګامونه کامیاب شول، دا به رن کیږي
-      shell: bash   # دا مهم دی ترڅو په وینډوز کې curl سم کار وکړي
+      if: success()
+      shell: bash
       run: |
         curl -v -F "chat_id=${{ secrets.TELEGRAM_TO }}" \
         -F document=@Output/ElyasScraper_Setup.exe \
-        -F caption="سلام الیاس جانه! 🚀 ستاسو د سکریپر نوی سیټ اپ (Setup) جوړ شو." \
+        -F "caption=🎉 مبارک شه استاذه! دا ستاسو وروستی فایل دی." \
         https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendDocument
