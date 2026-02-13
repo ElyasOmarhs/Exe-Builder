@@ -33,8 +33,20 @@ jobs:
     - name: Compile Setup Wizard
       run: iscc setup.iss
 
-    - name: Upload Setup File
+    - name: Upload Setup File to GitHub
       uses: actions/upload-artifact@v4
       with:
         name: ElyasScraper_Setup
         path: Output/ElyasScraper_Setup.exe
+
+    # ---------------------------------------------------
+    # دا لاندې برخه ستاسو د ټیلیګرام لپاره اضافه شوه
+    # ---------------------------------------------------
+    - name: Send Setup to Telegram
+      if: success() # یوازې که تېر ګامونه کامیاب شول، دا به رن کیږي
+      shell: bash   # دا مهم دی ترڅو په وینډوز کې curl سم کار وکړي
+      run: |
+        curl -v -F "chat_id=${{ secrets.TELEGRAM_TO }}" \
+        -F document=@Output/ElyasScraper_Setup.exe \
+        -F caption="سلام الیاس جانه! 🚀 ستاسو د سکریپر نوی سیټ اپ (Setup) جوړ شو." \
+        https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendDocument
