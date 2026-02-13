@@ -12,27 +12,27 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    # ۱. لومړی پایتون انسټالوئ ترڅو موږ وکولی شو په پښتو میسج ولیږو
+    # ۱. پایتون او د ریکویسټ کتابتون انسټالول
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.10'
+        
+    - name: Install Request Lib
+      run: pip install requests
 
-    # ۲. خبرتیا: پروسه پیل شوه (د پایتون په واسطه)
+    # ۲. خبرتیا: پروسه پیل شوه
     - name: Notify Start
       shell: python
       env:
         TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
         CHAT_ID: ${{ secrets.TELEGRAM_TO }}
       run: |
-        import urllib.request, urllib.parse, os
-        # دلته خپله پښتو لیکنه ولیکئ، پایتون یې په خپله سموي
+        import requests, os
         msg = "🚀 عالیجنابه! د بیولډ (Build) پروسه پیل شوه. لږ انتظار وکړئ..."
-        url = f"https://api.telegram.org/bot{os.environ['TOKEN']}/sendMessage?chat_id={os.environ['CHAT_ID']}&text={urllib.parse.quote(msg)}"
         try:
-            urllib.request.urlopen(url)
-        except:
-            print("Telegram Message Failed")
+            requests.post(f"https://api.telegram.org/bot{os.environ['TOKEN']}/sendMessage", data={'chat_id': os.environ['CHAT_ID'], 'text': msg})
+        except: pass
 
     - name: Install Python Dependencies
       run: |
@@ -40,10 +40,23 @@ jobs:
         pip install pyinstaller
         pip install -r requirements.txt
 
+    # ۳. [نوی ګام] خبرتیا: کتابتونونه انسټال شول
+    - name: Notify Deps Installed
+      shell: python
+      env:
+        TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+        CHAT_ID: ${{ secrets.TELEGRAM_TO }}
+      run: |
+        import requests, os
+        msg = "🛠 کتابتونونه انسټال شول! اوس د EXE جوړولو دروند کار پیلیږي..."
+        try:
+            requests.post(f"https://api.telegram.org/bot{os.environ['TOKEN']}/sendMessage", data={'chat_id': os.environ['CHAT_ID'], 'text': msg})
+        except: pass
+
     - name: Build EXE with PyInstaller
       run: pyinstaller --noconsole --onefile --collect-all customtkinter --name "XsraperPs" XsraperPs.py
 
-    # ۳. خبرتیا: EXE جوړ شو
+    # ۴. خبرتیا: EXE جوړ شو
     - name: Notify EXE Built
       if: success()
       shell: python
@@ -51,13 +64,11 @@ jobs:
         TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
         CHAT_ID: ${{ secrets.TELEGRAM_TO }}
       run: |
-        import urllib.request, urllib.parse, os
+        import requests, os
         msg = "✅ لومړی پړاو: EXE فایل په بریالیتوب جوړ شو. اوس سیټ اپ (Setup) جوړیږي..."
-        url = f"https://api.telegram.org/bot{os.environ['TOKEN']}/sendMessage?chat_id={os.environ['CHAT_ID']}&text={urllib.parse.quote(msg)}"
         try:
-            urllib.request.urlopen(url)
-        except:
-            print("Message Failed")
+            requests.post(f"https://api.telegram.org/bot{os.environ['TOKEN']}/sendMessage", data={'chat_id': os.environ['CHAT_ID'], 'text': msg})
+        except: pass
 
     - name: Install Inno Setup Compiler
       run: choco install innosetup
@@ -65,7 +76,7 @@ jobs:
     - name: Compile Setup Wizard
       run: iscc setup.iss
 
-    # ۴. خبرتیا: سیټ اپ جوړ شو
+    # ۵. خبرتیا: سیټ اپ جوړ شو
     - name: Notify Setup Complete
       if: success()
       shell: python
@@ -73,13 +84,11 @@ jobs:
         TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
         CHAT_ID: ${{ secrets.TELEGRAM_TO }}
       run: |
-        import urllib.request, urllib.parse, os
+        import requests, os
         msg = "📦 دوهم پړاو: سیټ اپ جوړ شو! اوس ګیټ هب ته پورته کیږي..."
-        url = f"https://api.telegram.org/bot{os.environ['TOKEN']}/sendMessage?chat_id={os.environ['CHAT_ID']}&text={urllib.parse.quote(msg)}"
         try:
-            urllib.request.urlopen(url)
-        except:
-            print("Message Failed")
+            requests.post(f"https://api.telegram.org/bot{os.environ['TOKEN']}/sendMessage", data={'chat_id': os.environ['CHAT_ID'], 'text': msg})
+        except: pass
 
     - name: Upload Setup File to GitHub
       uses: actions/upload-artifact@v4
@@ -87,14 +96,32 @@ jobs:
         name: ElyasScraper_Setup
         path: Output/ElyasScraper_Setup.exe
 
-    # ۵. وروستی ګام: فایل لیږل
-    # د فایل لیږلو لپاره curl غوره دی. دلته ما caption کوډ کړی دی چې پښتو یې خرابه نشي.
-    # %20 معنی فاصله، نور کودونه د پښتو تورو دي.
-    - name: Send Setup to Telegram
+    # ---------------------------------------------------
+    # ۶. وروستی ګام: فایل لیږل (اوس د Python په واسطه)
+    # ---------------------------------------------------
+    - name: Send Setup via Python
       if: success()
-      shell: bash
+      shell: python
+      env:
+        TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+        CHAT_ID: ${{ secrets.TELEGRAM_TO }}
       run: |
-        curl -v -F "chat_id=${{ secrets.TELEGRAM_TO }}" \
-        -F document=@Output/ElyasScraper_Setup.exe \
-        -F "caption=%F0%9F%8E%89%20%D9%85%D8%A8%D8%A7%D8%B1%DA%A9%20%D8%B4%D9%87%20%D8%A7%D8%B3%D8%AA%D8%A7%D8%B0%D9%87%21%20%D8%AF%D8%A7%20%D8%B3%D8%AA%D8%A7%D8%B3%D9%88%20%D9%88%D8%B1%D9%88%D8%B3%D8%AA%DB%8C%20%D9%81%D8%A7%DB%8C%D9%84%20%D8%AF%DB%8C." \
-        https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendDocument
+        import requests
+        import os
+
+        # د فایل ادرس او د بوټ معلومات
+        file_path = 'Output/ElyasScraper_Setup.exe'
+        caption = "🎉 مبارک شه استاذه! دا ستاسو وروستی فایل دی."
+        token = os.environ['TOKEN']
+        chat_id = os.environ['CHAT_ID']
+
+        try:
+            with open(file_path, 'rb') as f:
+                url = f"https://api.telegram.org/bot{token}/sendDocument"
+                data = {'chat_id': chat_id, 'caption': caption}
+                files = {'document': f}
+                # دلته فایل لیږل کیږي
+                resp = requests.post(url, data=data, files=files)
+                print("Upload response:", resp.text)
+        except Exception as e:
+            print(f"Error sending file: {e}")
